@@ -18,6 +18,7 @@ package com.example.android.emojify;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.util.Log;
 import android.util.SparseArray;
 import android.widget.Toast;
@@ -44,11 +45,29 @@ class Emojifier {
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
                 .build();
 
-        // Build the frame
-        Frame frame = new Frame.Builder().setBitmap(picture).build();
+        int rotationsLeft = 4;
+        boolean facesFound;
 
-        // Detect the faces
-        SparseArray<Face> faces = detector.detect(frame);
+        Frame frame;
+        SparseArray<Face> faces;
+
+        Log.d(LOG_TAG, "Initial image");
+
+        do {
+            // Build the frame
+            frame = new Frame.Builder().setBitmap(picture).build();
+            // Detect the faces
+            Log.d(LOG_TAG, "Detecting faces...");
+            faces = detector.detect(frame);
+            facesFound = faces.size() > 0;
+
+            rotationsLeft--;
+            if (rotationsLeft > 0 && !facesFound) {
+                Log.d(LOG_TAG, "No faces found");
+                picture = rotateBitmap(picture);
+            }
+        }
+        while (rotationsLeft > 0 && !facesFound);
 
         // Log the number of faces
         Log.d(LOG_TAG, "detectFaces: number of faces = " + faces.size());
@@ -57,12 +76,41 @@ class Emojifier {
         if(faces.size() == 0){
             Toast.makeText(context, R.string.no_faces_message, Toast.LENGTH_SHORT).show();
         }
-
-        // TODO (2): Iterate through the faces, calling getClassifications() for each face.
+        else {
+            // TODO (2): Iterate through the faces, calling getClassifications() for each face.
+            for (int i = 0; i < faces.size(); i++) {
+                // Log the classification probabilities for each face.
+                Log.d(LOG_TAG, "Face # " + i + 1);
+                getClassifications(faces.get(i));
+            }
+        }
 
         // Release the detector
         detector.release();
     }
 
     // TODO (1): Create a static method called getClassifications() which logs the probability of each eye being open and that the person is smiling.
+    /**
+     * Method for logging the classification probabilities.
+     *
+     * @param face The face to get the classification probabilities.
+     */
+    private static void getClassifications(Face face) {
+        // Log all the probabilities
+        Log.d(LOG_TAG, "getClassifications: smilingProb = " + face.getIsSmilingProbability());
+        Log.d(LOG_TAG, "getClassifications: leftEyeOpenProb = " + face.getIsLeftEyeOpenProbability());
+        Log.d(LOG_TAG, "getClassifications: rightEyeOpenProb = " + face.getIsRightEyeOpenProbability());
+    }
+
+    private static Bitmap rotateBitmap(Bitmap bitmapToRotate) {
+
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+
+        Log.d(LOG_TAG, "Rotating 90°");
+
+        return Bitmap.createBitmap(bitmapToRotate, 0, 0,
+                bitmapToRotate.getWidth(), bitmapToRotate.getHeight(), matrix,
+                true);
+    }
 }
